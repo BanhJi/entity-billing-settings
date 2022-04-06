@@ -1,0 +1,119 @@
+service: entity-billing-settings
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  releasedVersion: v1
+  stackName: ${self:service}-${self:custom.stage}
+  region: ap-east-1 #ap-southeast-1 # this is the region that we deploy our lambda to
+  deploymentBucket:
+    blockPublicAccess: true # com.serverless.${opt:region, self:provider.region}.deploy
+    name: com.serverless.ap-east-1.deploy #com.serverless.ap-southeast-1.deploy
+    versioning: false
+  environment:
+    item_table: Entity-${self:custom.stage}
+    setting_table: settings-${self:custom.stage}
+  iamRoleStatements:
+    - Effect: "Allow" # or Deny
+      Resource: "*"
+      Action: # this is the action against dynamodb
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+        - "dynamodb:GetItem"
+        - "dynamodb:PutItem"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+        - "dynamodb:BatchWriteItem"
+        - "dynamodb:TransactWrite"
+    - Effect: "Allow"
+      Resource: "*"
+      Action:
+        - "sns:*"
+plugins:
+  - serverless-domain-manager
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  domains:
+    prod: apis.banhji.com
+    staging: staging-apis.banhji.com
+    dev: sandbox.banhji.com
+  customDomain:
+    basePath: ${self:service}
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    stage: ${opt:stage, self:provider.stage}
+    certificateName: '*.banhji.com'
+    createRout53Record: true
+package:
+  individually: true
+  patterns:
+    - "!**/*"
+functions:
+  sub-location-create:
+    handler: api/add_sub_location.index
+    package:
+      patterns:
+        - config/**
+        - node_modules/uuid/**
+        - api/add_sub_location.js
+      individually: true
+    events:
+      - http:
+          path: sub-location/institute/{institute_id}/add
+          method: POST
+          cors: true
+          request:
+            parameters:
+              paths:
+                institute_id: true
+  dimension-get:
+    handler: api/get_dimension.get
+    package:
+      patterns:
+        - config/**
+        - node_modules/uuid/**
+        - api/get_dimension.js
+      individually: true
+    events:
+      - http:
+          path: dimension/institute/{institute_id}/get
+          method: GET
+          cors: true
+          request:
+            parameters:
+              paths:
+                institute_id: true
+  contract-level-create:
+    handler: api/add_contract_level.index
+    package:
+      patterns:
+        - config/**
+        - node_modules/uuid/**
+        - api/add_contract_level.js
+      individually: true
+    events:
+      - http:
+          path: contract-level/institute/{institute_id}/add
+          method: POST
+          cors: true
+          request:
+            parameters:
+              paths:
+                institute_id: true
+  contract-level-get:
+    handler: api/get_contract_level.get
+    package:
+      patterns:
+        - config/**
+        - node_modules/uuid/**
+        - api/get_contract_level.js
+      individually: true
+    events:
+      - http:
+          path: contract-level/institute/{institute_id}/get
+          method: GET
+          cors: true
+          request:
+            parameters:
+              paths:
+                institute_id: true
